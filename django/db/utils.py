@@ -316,6 +316,8 @@ class ConnectionRouter(object):
         return True
 
     def allow_migrate_model(self, db, model):
+        # We don't need to differentiate between Model and ModelState as the
+        # latter mimics the _meta API where needed
         return self.allow_migrate(
             db,
             model._meta.app_label,

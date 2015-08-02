@@ -65,9 +65,9 @@ class AddField(Operation):
                 field.default = NOT_PROVIDED
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
-        from_model = from_state.apps.get_model(app_label, self.model_name)
-        if self.allow_migrate_model(schema_editor.connection.alias, from_model):
-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+        model_state = from_state.models[app_label, self.model_name_lower]
+        if self.allow_migrate_model(schema_editor.connection.alias, model_state):
+            schema_editor.remove_field(model_state, model_state.get_field_by_name(self.name), self.name, from_state)
 
     def describe(self):
         return "Add field %s to %s" % (self.name, self.model_name)
@@ -116,9 +116,9 @@ class RemoveField(Operation):
         state.reload_model(app_label, self.model_name_lower)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        from_model = from_state.apps.get_model(app_label, self.model_name)
-        if self.allow_migrate_model(schema_editor.connection.alias, from_model):
-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+        model_state = from_state.models[app_label, self.model_name_lower]
+        if self.allow_migrate_model(schema_editor.connection.alias, model_state):
+            schema_editor.remove_field(model_state, model_state.get_field_by_name(self.name), self.name, from_state)
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
         to_model = to_state.apps.get_model(app_label, self.model_name)

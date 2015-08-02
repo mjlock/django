@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.db import models
 from django.db.migrations.operations.base import Operation
 from django.db.migrations.state import ModelState
+from django.db.models.fields.proxy import OrderWrt
 from django.db.models.options import normalize_together
 from django.utils import six
 from django.utils.functional import cached_property
@@ -59,9 +60,9 @@ class CreateModel(Operation):
             schema_editor.create_model(model)
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
-        model = from_state.apps.get_model(app_label, self.name)
-        if self.allow_migrate_model(schema_editor.connection.alias, model):
-            schema_editor.delete_model(model)
+        model_state = from_state.models[app_label, self.name_lower]
+        if self.allow_migrate_model(schema_editor.connection.alias, model_state):
+            schema_editor.delete_model(model_state)
 
     def describe(self):
         return "Create %smodel %s" % ("proxy " if self.options.get("proxy", False) else "", self.name)
@@ -110,9 +111,9 @@ class DeleteModel(Operation):
         state.remove_model(app_label, self.name_lower)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        model = from_state.apps.get_model(app_label, self.name)
-        if self.allow_migrate_model(schema_editor.connection.alias, model):
-            schema_editor.delete_model(model)
+        model_state = from_state.models[app_label, self.name_lower]
+        if self.allow_migrate_model(schema_editor.connection.alias, model_state):
+            schema_editor.delete_model(model_state)
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
         model = to_state.apps.get_model(app_label, self.name)
@@ -469,20 +470,20 @@ class AlterOrderWithRespectTo(Operation):
         state.reload_model(app_label, self.name_lower)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        to_model = to_state.apps.get_model(app_label, self.name)
+        to_model = to_state.models[app_label, self.name_lower]
         if self.allow_migrate_model(schema_editor.connection.alias, to_model):
-            from_model = from_state.apps.get_model(app_label, self.name)
+            field = OrderWrt(default=0)
+            field.set_attributes_from_name("_order")
             # Remove a field if we need to
+            from_model = from_state.models[app_label, self.name_lower]
             if from_model._meta.order_with_respect_to and not to_model._meta.order_with_respect_to:
-                schema_editor.remove_field(from_model, from_model._meta.get_field("_order"))
+                schema_editor.remove_field(from_model, field, "_order", from_state)
+
             # Add a field if we need to (altering the column is untouched as
             # it's likely a rename)
             elif to_model._meta.order_with_respect_to and not from_model._meta.order_with_respect_to:
-                field = to_model._meta.get_field("_order")
-                if not field.has_default():
-                    field.default = 0
                 schema_editor.add_field(
-                    from_model,
+                    from_state.apps.get_model(app_label, self.name_lower),
                     field,
                 )
 

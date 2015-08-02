@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import router
+from django.db.migrations.state import ModelState
 
 
 class Operation(object):
@@ -106,6 +107,8 @@ class Operation(object):
         This is a thin wrapper around router.allow_migrate_model() that
         preemptively rejects any proxy, swapped out, or unmanaged model.
         """
+        # We don't need to differentiate between Model and ModelState as the
+        # latter mimics the _meta API where needed
         if not model._meta.can_migrate(connection_alias):
             return False
 

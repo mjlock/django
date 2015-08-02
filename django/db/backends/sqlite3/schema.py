@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.apps.registry import Apps
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+from django.db.backends.utils import truncate_name
 from django.utils import six
 
 
@@ -220,7 +221,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             return self.create_model(field.remote_field.through)
         self._remake_table(model, create_fields=[field])
 
-    def remove_field(self, model, field):
+    def remove_field(self, model, field, name=None, project_state=None):
         """
         Removes a field from a model. Usually involves deleting a column,
         but for M2Ms may involve deleting a table.
@@ -228,13 +229,20 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         # M2M fields are a special case
         if field.many_to_many:
             # For implicit M2M tables, delete the auto-created table
-            if field.remote_field.through._meta.auto_created:
+            if field.remote_field.through is None:
                 self.delete_model(field.remote_field.through)
+                through_db_table = '%s_%s_%s' % (
+                    model.app_label, model.name_lower, name.lower(),
+                )
+                through_db_table = truncate_name(through_db_table)
+                self.execute(self.sql_delete_table % {
+                    "table": self.quote_name(through_db_table),
+                })
             # For explicit "through" M2M fields, do nothing
         # For everything else, remake.
         else:
             # It might not actually have a column behind it
-            if field.db_parameters(connection=self.connection)['type'] is None:
+            if not field.concrete:
                 return
             self._remake_table(model, delete_fields=[field])
 
