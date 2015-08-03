@@ -51,16 +51,13 @@ class AddField(Operation):
         state.reload_model(app_label, self.model_name_lower)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        to_model = to_state.apps.get_model(app_label, self.model_name)
-        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
-            from_model = from_state.apps.get_model(app_label, self.model_name)
-            field = to_model._meta.get_field(self.name)
+        to_model_state = to_state.models[app_label, self.model_name_lower]
+        if self.allow_migrate_model(schema_editor.connection.alias, to_model_state):
+            from_model_state = from_state.models[app_label, self.model_name_lower]
+            field = to_model_state.get_field_by_name(self.name)
             if not self.preserve_default:
                 field.default = self.field.default
-            schema_editor.add_field(
-                from_model,
-                field,
-            )
+            schema_editor.add_field(from_model_state, field, self.name)
             if not self.preserve_default:
                 field.default = NOT_PROVIDED
 

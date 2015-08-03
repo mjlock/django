@@ -1,4 +1,5 @@
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+from django.db.migrations.state import ModelState
 from django.db.models import NOT_PROVIDED
 
 
@@ -47,15 +48,31 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         )
 
     def add_field(self, model, field):
-        super(DatabaseSchemaEditor, self).add_field(model, field)
+        if isinstance(model, ModelState):
+            super(DatabaseSchemaEditor, self).add_field(model, field)
 
-        # Simulate the effect of a one-off default.
-        if self.skip_default(field) and field.default not in {None, NOT_PROVIDED}:
-            effective_default = self.effective_default(field)
-            self.execute('UPDATE %(table)s SET %(column)s = %%s' % {
-                'table': self.quote_name(model._meta.db_table),
-                'column': self.quote_name(field.column),
-            }, [effective_default])
+            # Simulate the effect of a one-off default.
+            if self.skip_default(field) \
+                and field.default not in {None, NOT_PROVIDED}:
+                effective_default = self.effective_default(field)
+                self.execute('UPDATE %(table)s SET %(column)s = %%s' % {
+                    'table': self.quote_name(model._meta.db_table),
+                    'column': self.quote_name(field.column),
+                }, [effective_default])
+
+        else:
+            # regular model here
+            raise NotImplementedError
+
+            super(DatabaseSchemaEditor, self).add_field(model, field)
+
+            # Simulate the effect of a one-off default.
+            if self.skip_default(field) and field.default not in {None, NOT_PROVIDED}:
+                effective_default = self.effective_default(field)
+                self.execute('UPDATE %(table)s SET %(column)s = %%s' % {
+                    'table': self.quote_name(model._meta.db_table),
+                    'column': self.quote_name(field.column),
+                }, [effective_default])
 
     def _model_indexes_sql(self, model):
         storage = self.connection.introspection.get_storage_engine(
