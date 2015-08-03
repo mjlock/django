@@ -79,6 +79,14 @@ class ProjectState(object):
         if 'apps' in self.__dict__:  # hasattr would cache the property
             self.reload_model(app_label, model_name)
 
+    def get_model(self, app_label, model_name):
+        app_label, model_name = _get_app_label_and_model_name(model_name, app_label)
+        model_name = model_name.lower()
+        try:
+            return self.models[app_label, model_name]
+        except KeyError:
+            return ModelState.from_model(global_apps.get_model(app_label, model_name))
+
     def remove_model(self, app_label, model_name):
         del self.models[app_label, model_name]
         if 'apps' in self.__dict__:  # hasattr would cache the property
@@ -348,6 +356,8 @@ class ModelState(object):
         for name, field in self.fields:
             # Propagate some internal attributes, e.g. field.column.
             field.set_attributes_from_name(name)
+            field._migrations_app_label = self.app_label
+            field._migrations_model_name = self.name_lower
 
     @cached_property
     def name_lower(self):
@@ -609,8 +619,18 @@ class ModelStateOptions(object):
 
     @cached_property
     def db_table(self):
-        db_table = "%s_%s" % (self.model.app_label, self.model.name_lower)
+        db_table = self.model.options.get('db_table', '')
+        if not db_table:
+            db_table = "%s_%s" % (self.model.app_label, self.model.name_lower)
         return truncate_name(db_table, connection.ops.max_name_length())
+
+    @cached_property
+    def db_tablespace(self):
+        return self.model.options.get('db_tablespace', None)
+
+    @cached_property
+    def index_together(self):
+        return self.model.options.get('index_together', [])
 
     @cached_property
     def label_lower(self):
@@ -623,6 +643,12 @@ class ModelStateOptions(object):
     @cached_property
     def order_with_respect_to(self):
         return self.model.options.get('order_with_respect_to', None)
+
+    @cached_property
+    def pk(self):
+        for name, field in self.model.fields:
+            if field.primary_key:
+                return field
 
     @cached_property
     def proxy(self):
@@ -661,9 +687,13 @@ class ModelStateOptions(object):
                     # or as part of validation.
                     return swapped_for
 
-                if '%s.%s' % (swapped_label, swapped_object.lower()) not in (None, self.model.label_lower):
+                if '%s.%s' % (swapped_label, swapped_object.lower()) not in (None, self.label_lower):
                     return swapped_for
         return None
+
+    @cached_property
+    def unique_together(self):
+        return self.model.options.get('unique_together', [])
 
     def can_migrate(self, conn):
         """

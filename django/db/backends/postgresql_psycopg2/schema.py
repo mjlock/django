@@ -1,6 +1,7 @@
 import psycopg2
 
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+from django.db.migrations.state import ModelState
 
 
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
@@ -17,24 +18,39 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def quote_value(self, value):
         return psycopg2.extensions.adapt(value)
 
-    def _model_indexes_sql(self, model):
-        output = super(DatabaseSchemaEditor, self)._model_indexes_sql(model)
+    def _model_indexes_sql(self, model, project_state=None):
+        output = super(DatabaseSchemaEditor, self)._model_indexes_sql(model, project_state=project_state)
         if not model._meta.managed or model._meta.proxy or model._meta.swapped:
             return output
 
-        for field in model._meta.local_fields:
-            db_type = field.db_type(connection=self.connection)
-            if db_type is not None and (field.db_index or field.unique):
-                # Fields with database column types of `varchar` and `text` need
-                # a second index that specifies their operator class, which is
-                # needed when performing correct LIKE queries outside the
-                # C locale. See #12234.
-                if db_type.startswith('varchar'):
-                    output.append(self._create_index_sql(
-                        model, [field], suffix='_like', sql=self.sql_create_varchar_index))
-                elif db_type.startswith('text'):
-                    output.append(self._create_index_sql(
-                        model, [field], suffix='_like', sql=self.sql_create_text_index))
+        if isinstance(model, ModelState):
+            for name, field in model.fields:
+                db_type = field.db_type(connection=self.connection, project_state=project_state)
+                if db_type is not None and (field.db_index or field.unique):
+                    # Fields with database column types of `varchar` and `text` need
+                    # a second index that specifies their operator class, which is
+                    # needed when performing correct LIKE queries outside the
+                    # C locale. See #12234.
+                    if db_type.startswith('varchar'):
+                        output.append(self._create_index_sql(
+                            model, [field], suffix='_like', sql=self.sql_create_varchar_index))
+                    elif db_type.startswith('text'):
+                        output.append(self._create_index_sql(
+                            model, [field], suffix='_like', sql=self.sql_create_text_index))
+        else:
+            for field in model._meta.local_fields:
+                db_type = field.db_type(connection=self.connection)
+                if db_type is not None and (field.db_index or field.unique):
+                    # Fields with database column types of `varchar` and `text` need
+                    # a second index that specifies their operator class, which is
+                    # needed when performing correct LIKE queries outside the
+                    # C locale. See #12234.
+                    if db_type.startswith('varchar'):
+                        output.append(self._create_index_sql(
+                            model, [field], suffix='_like', sql=self.sql_create_varchar_index))
+                    elif db_type.startswith('text'):
+                        output.append(self._create_index_sql(
+                            model, [field], suffix='_like', sql=self.sql_create_text_index))
         return output
 
     def _alter_column_type_sql(self, table, old_field, new_field, new_type):

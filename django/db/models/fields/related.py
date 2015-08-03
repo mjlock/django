@@ -2101,7 +2101,19 @@ class ForeignKey(ForeignObject):
         # in which case the column type is simply that of an IntegerField.
         # If the database needs similar types for key fields however, the only
         # thing we can do is making AutoField an IntegerField.
-        rel_field = self.target_field
+        if project_state:
+            if self.remote_field.model == RECURSIVE_RELATIONSHIP_CONSTANT:
+                al, mn = self._migrations_app_label, self._migrations_model_name
+            else:
+                al, mn = getattr(self, '_migrations_app_label', ''), self.remote_field.model
+            model_state = project_state.get_model(al, mn)
+            if self.remote_field.field_name:
+                field_name = self.remote_field.field_name
+            else:
+                field_name = model_state._meta.pk.name
+            rel_field = model_state.get_field_by_name(field_name)
+        else:
+            rel_field = self.target_field
         if (isinstance(rel_field, AutoField) or
                 (not connection.features.related_fields_match_type and
                 isinstance(rel_field, (PositiveIntegerField,
