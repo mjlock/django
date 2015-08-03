@@ -600,7 +600,7 @@ class Field(RegisterLookupMixin):
         self.run_validators(value)
         return value
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         """
         Returns the database column data type for this field, for the provided
         connection.
@@ -626,7 +626,7 @@ class Field(RegisterLookupMixin):
         except KeyError:
             return None
 
-    def db_parameters(self, connection):
+    def db_parameters(self, connection, project_state=None):
         """
         Extension of db_type(), providing a range of different return
         values (type, checks).

@@ -65,7 +65,7 @@ class IntegerRangeField(RangeField):
     range_type = NumericRange
     form_field = forms.IntegerRangeField
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'int4range'
 
 
@@ -74,7 +74,7 @@ class BigIntegerRangeField(RangeField):
     range_type = NumericRange
     form_field = forms.IntegerRangeField
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'int8range'
 
 
@@ -83,7 +83,7 @@ class FloatRangeField(RangeField):
     range_type = NumericRange
     form_field = forms.FloatRangeField
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'numrange'
 
 
@@ -92,7 +92,7 @@ class DateTimeRangeField(RangeField):
     range_type = DateTimeTZRange
     form_field = forms.DateTimeRangeField
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'tstzrange'
 
 
@@ -101,7 +101,7 @@ class DateRangeField(RangeField):
     range_type = DateRange
     form_field = forms.DateRangeField
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'daterange'
 
 

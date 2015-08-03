@@ -116,7 +116,7 @@ class BaseSpatialField(Field):
             kwargs['spatial_index'] = self.spatial_index
         return name, path, args, kwargs
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return connection.ops.geo_db_type(self)
 
     # The following functions are used to get the units, their name, and
@@ -415,9 +415,9 @@ class RasterField(BaseSpatialField):
         if not connection.features.gis_enabled or not connection.features.supports_raster:
             raise ImproperlyConfigured('Raster fields require backends with raster support.')
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         self._check_connection(connection)
-        return super(RasterField, self).db_type(connection)
+        return super(RasterField, self).db_type(connection, project_state=project_state)
 
     def from_db_value(self, value, expression, connection, context):
         return connection.ops.parse_raster(value)

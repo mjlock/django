@@ -279,7 +279,7 @@ class RelatedField(Field):
 
         return errors
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         # By default related field will not have a column as it relates to
         # columns from another table.
         return None
@@ -2094,7 +2094,7 @@ class ForeignKey(ForeignObject):
         defaults.update(kwargs)
         return super(ForeignKey, self).formfield(**defaults)
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         # The database column type of a ForeignKey is the column type
         # of the field to which it points. An exception is if the ForeignKey
         # points to an AutoField/PositiveIntegerField/PositiveSmallIntegerField,
@@ -2106,11 +2106,11 @@ class ForeignKey(ForeignObject):
                 (not connection.features.related_fields_match_type and
                 isinstance(rel_field, (PositiveIntegerField,
                                        PositiveSmallIntegerField)))):
-            return IntegerField().db_type(connection=connection)
-        return rel_field.db_type(connection=connection)
+            return IntegerField().db_type(connection=connection, project_state=project_state)
+        return rel_field.db_type(connection=connection, project_state=project_state)
 
-    def db_parameters(self, connection):
-        return {"type": self.db_type(connection), "check": []}
+    def db_parameters(self, connection, project_state=None):
+        return {"type": self.db_type(connection, project_state=project_state), "check": []}
 
     def convert_empty_strings(self, value, expression, connection, context):
         if (not value) and isinstance(value, six.string_types):
@@ -2781,10 +2781,10 @@ class ManyToManyField(RelatedField):
             defaults['initial'] = [i._get_pk_val() for i in initial]
         return super(ManyToManyField, self).formfield(**defaults)
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         # A ManyToManyField is not represented by a single column,
         # so return None.
         return None
 
-    def db_parameters(self, connection):
+    def db_parameters(self, connection, project_state=None):
         return {"type": None, "check": None}

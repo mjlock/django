@@ -17,7 +17,7 @@ class JSONField(Field):
         'invalid': _("Value must be valid JSON."),
     }
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'jsonb'
 
     def get_transform(self, name):

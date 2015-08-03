@@ -62,9 +62,9 @@ class ArrayField(Field):
     def description(self):
         return 'Array of %s' % self.base_field.description
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         size = self.size or ''
-        return '%s[%s]' % (self.base_field.db_type(connection), size)
+        return '%s[%s]' % (self.base_field.db_type(connection, project_state=project_state), size)
 
     def get_db_prep_value(self, value, connection, prepared=False):
         if isinstance(value, list) or isinstance(value, tuple):

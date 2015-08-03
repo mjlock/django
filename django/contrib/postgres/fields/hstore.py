@@ -17,7 +17,7 @@ class HStoreField(Field):
         'not_a_string': _('The value of "%(key)s" is not a string.'),
     }
 
-    def db_type(self, connection):
+    def db_type(self, connection, project_state=None):
         return 'hstore'
 
     def get_transform(self, name):
